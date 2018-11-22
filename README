@@ -1,0 +1,8 @@
+cloudflare-ddns for Debian
+
+A SysV timer to update the dns records of a cloudflare zone with local IP4
+configuration options are in /etc/cloudflare-ddns/cloudflare-ddns.conf
+
+The special dependencies used in this package are:
+
+Depends: dnsutils, curl, jq, bash

@@ -1,0 +1,53 @@
+#!/bin/bash
+# credits go to https://www.rohanjain.in/cloudflare-ddns/
+
+TMP_FILE="/tmp/cloudflare-ddns"
+API_URL="https://api.cloudflare.com/client/v4"
+
+. /etc/cloudflare-ddns/cloudflare-ddns.conf
+
+# Get previous IP address and record info
+read -r ZONE_ID RECORD_ID PREVIOUS_IP RECORD_NAME ZONE_NAME <<<$(jq -r '[.zone_id, .record_id, .ip, .record_name, .zone_name] | @tsv' $TMP_FILE)
+CURRENT_IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
+
+if [ "$RECORD_NAME" != "$DNS_RECORD" ] || [ "$ZONE_NAME" != "$DNS_ZONE" ]; then
+  # If config file has been changed
+    # Get a zone id
+    ZONE_ID=$(curl "$API_URL/zones?name=$DNS_ZONE" \
+      --silent \
+      -X GET \
+      -H "Content-Type: application/json" \
+      -H "X-Auth-Email: $API_EMAIL" \
+      -H "X-Auth-Key: $API_KEY" \
+    | jq -r ".result[0].id"
+    )
+
+    # # Get a record id
+    RECORD_ID=$(curl "$API_URL/zones/$ZONE_ID/dns_records?name=$DNS_RECORD" \
+      --silent \
+      -X GET \
+      -H "Content-Type: application/json" \
+      -H "X-Auth-Email: $API_EMAIL" \
+      -H "X-Auth-Key: $API_KEY" \
+    | jq -r ".result[0].id"
+    )
+elif [ "$CURRENT_IP" = "$PREVIOUS_IP" ]; then
+  # If new/previous IPs match, no need for an update.
+  exit 0
+fi
+
+_UPDATE=$(cat <<EOF
+{ "type": "A",
+"name": "$DNS_RECORD",
+"content": "$CURRENT_IP"}
+EOF
+)
+
+curl "$API_URL/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+--silent \
+-X PUT \
+-H "Content-Type: application/json" \
+-H "X-Auth-Email: $API_EMAIL" \
+-H "X-Auth-Key: $API_KEY" \
+-d "$_UPDATE" \
+| jq ".result | {zone_id: .zone_id, record_id: .id, ip: .content, record_name: .name, zone_name: .zone_name}" &> $TMP_FILE

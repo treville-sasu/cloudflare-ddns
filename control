@@ -1,0 +1,29 @@
+Section: misc
+Priority: optional
+# Homepage: <enter URL here; no default>
+Standards-Version: 3.9.2
+
+Package: cloudflare-ddns
+Version: 0.0.2
+Maintainer: elmatou <elmatou@gmail.com>
+Depends: dnsutils, curl, jq
+Architecture: all
+Copyright: copyright
+# Changelog: changelog
+Readme: README
+# Links: <pair of space-separated paths; First is path symlink points at, second is filename of link>
+Description: Clouflare dynamic dns strategy
+ Set a systemd service and timer to update Cloudflare records with local IP.
+ Offer IPv4 detection digging with DNS server
+Files: cloudflare-ddns.conf /etc/cloudflare-ddns/
+  cloudflare-ddns.service /lib/systemd/system/
+  cloudflare-ddns.timer /lib/systemd/system/
+  cloudflare-ddns /usr/bin/
+File: postinst
+ #!/bin/sh -e
+ deb-systemd-helper enable cloudflare-ddns.timer
+    exit 0
+File: prerm
+ #!/bin/sh -e
+ deb-systemd-helper disable cloudflare-ddns.timer
+    exit 0
